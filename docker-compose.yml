@@ -1,0 +1,31 @@
+
+services:
+  auth:
+    image: songhieng2k25/zongdev-auth:1.0.0
+    build: ./Microservices/auth
+    ports:
+      - "8001:3000"
+
+  profile:
+    image: songhieng2k25/zongdev-profile:1.0.0
+    build: ./Microservices/profile
+    ports:
+      - "8002:3001"
+
+  messenger:
+    image: songhieng2k25/zongdev-messenger:1.0.0
+    build: ./Microservices/messenger
+    ports:
+      - "8003:3002"
+
+  finance:
+    image: songhieng2k25/zongdev-finance:1.0.0
+    build: ./Microservices/finance
+    ports:
+      - "8004:8080"
+
+  share:
+    image: songhieng2k25/zongdev-share:1.0.0
+    build: ./Microservices/share
+    ports:
+      - "8005:3004"

@@ -1,0 +1,12 @@
+my-microservices/
+├── Microservices/
+│   ├── auth/         # Node.js
+│   ├── finance/      # Java Spring Boot
+│   ├── messenger/    # Go
+│   ├── profile/      # Python Flask
+│   └── share/        # PHP
+├── docker-compose.yml
+└── deploy.sh
+
++ Use this command to rebuild
+docker-compose up --build
