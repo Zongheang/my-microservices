@@ -42,22 +42,25 @@ jobs:
         run: |
           docker build -t zongdev-${{ matrix.service }} ./Microservices/${{ matrix.service }}
 
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names zongdev-${{ matrix.service }} || \
+          aws ecr create-repository --repository-name zongdev-${{ matrix.service }}
+
       - name: Tag & Push Images (ECR + DockerHub)
         run: |
           VERSION="1.0.0"
 
-          # --- DockerHub repo name ---
+          # DockerHub image
           HUB_IMAGE="songhieng2k25/zongdev-${{ matrix.service }}:${VERSION}"
 
-          # --- AWS ECR repo name ---
+          # AWS ECR image
           ECR_IMAGE="${{ steps.ecr.outputs.registry }}/zongdev-${{ matrix.service }}:${VERSION}"
 
-          # Tag
+          # Tag images
           docker tag zongdev-${{ matrix.service }} $HUB_IMAGE
           docker tag zongdev-${{ matrix.service }} $ECR_IMAGE
 
-          # Push to DockerHub
+          # Push images
           docker push $HUB_IMAGE
-
-          # Push to AWS ECR
           docker push $ECR_IMAGE
