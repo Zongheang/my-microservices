@@ -9,6 +9,10 @@ REGISTRY_URL="songhieng2k25/zongdev"
 for SERVICE in "${SERVICES[@]}"; do
   echo "Building $SERVICE..."
   docker build -t $REGISTRY_URL-$SERVICE:$TAG_VERSION ./Microservices/$SERVICE
+  if [ $? -ne 0 ]; then
+    echo "Build failed for $SERVICE. Exiting..."
+    exit 1
+  fi
 
   echo "Pushing $SERVICE..."
   docker push $REGISTRY_URL-$SERVICE:$TAG_VERSION
@@ -24,4 +28,4 @@ docker-compose down
 docker-compose pull
 docker-compose up -d
 
-echo "✅ Deployment complete with tag: $TAG_VERSION"
+echo "Deployment complete with tag: $TAG_VERSION"
