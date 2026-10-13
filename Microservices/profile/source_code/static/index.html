@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Service · ZongDev</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👤</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080d;
+    --panel: rgba(255, 255, 255, 0.035);
+    --panel-2: rgba(255, 255, 255, 0.06);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #eceef3;
+    --muted: #8e95a5;
+    --dim: #5d6474;
+    --a1: #3b82f6;
+    --a2: #06b6d4;
+    --ok: #34d399;
+    --bad: #f87171;
+    --radius: 18px;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; color: inherit; }
+
+  /* Background glow */
+  .glow { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .glow::before, .glow::after {
+    content: ""; position: absolute; width: 640px; height: 640px; border-radius: 50%;
+    filter: blur(120px); opacity: .28;
+  }
+  .glow::before { background: var(--a1); top: -220px; left: -160px; animation: drift 18s ease-in-out infinite alternate; }
+  .glow::after { background: var(--a2); bottom: -260px; right: -200px; animation: drift 22s ease-in-out infinite alternate-reverse; }
+  .grid-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
+    opacity: .5;
+  }
+  @keyframes drift { to { transform: translate(120px, 80px) scale(1.15); } }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: rgba(7, 8, 13, .65);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--a1), var(--a2)); font-size: 15px;
+    box-shadow: 0 6px 20px -6px var(--a1);
+  }
+  .brand small { color: var(--muted); font-weight: 500; }
+  .svc-nav { min-width: 0; display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 999px; overflow-x: auto; scrollbar-width: none; }
+  .svc-nav::-webkit-scrollbar { display: none; }
+  .svc-nav a { padding: 6px 14px; border-radius: 999px; font-size: 13.5px; color: var(--muted); font-weight: 500; transition: .2s; white-space: nowrap; }
+  .svc-nav a:hover { color: var(--text); background: var(--panel-2); }
+  .svc-nav a.active { color: #fff; background: linear-gradient(135deg, var(--a1), var(--a2)); }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 80px 0 64px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--border); font-size: 13px; color: var(--muted);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); position: relative; }
+  .dot.up { background: var(--ok); }
+  .dot.up::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--ok); opacity: .4; animation: ping 1.8s ease-out infinite; }
+  .dot.down { background: var(--bad); }
+  @keyframes ping { from { transform: scale(.6); opacity: .6; } to { transform: scale(1.8); opacity: 0; } }
+  h1 { font-size: clamp(38px, 5.4vw, 62px); line-height: 1.05; letter-spacing: -.035em; font-weight: 800; margin: 22px 0 20px; }
+  .grad { background: linear-gradient(120deg, var(--a1), var(--a2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 18px; color: var(--muted); max-width: 540px; }
+  .cta { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px;
+    font-weight: 600; font-size: 15px; cursor: pointer; border: 1px solid var(--border); background: var(--panel-2);
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.09); }
+  .btn.primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--a1), var(--a2)); box-shadow: 0 10px 30px -10px var(--a1); }
+  .btn.primary:hover { box-shadow: 0 14px 36px -10px var(--a1); }
+  .tech { display: flex; gap: 22px; margin-top: 40px; color: var(--dim); font-size: 13px; flex-wrap: wrap; }
+  .tech b { color: var(--muted); font-weight: 600; }
+
+  /* Cards */
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .demo { padding: 26px; position: relative; }
+  .demo-tag {
+    position: absolute; top: -12px; right: 20px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  }
+
+  /* Status */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 96px; }
+  .stat { padding: 20px 22px; }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .stat .value { font-size: 20px; font-weight: 700; margin-top: 6px; letter-spacing: -.01em; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .stat .value.mono { display: block; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 16px; font-weight: 500; }
+
+  /* Sections */
+  section { margin-bottom: 110px; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--a1); filter: brightness(1.3); }
+  h2 { font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -.03em; line-height: 1.15; margin: 10px 0 14px; }
+  .sub { color: var(--muted); max-width: 620px; margin-bottom: 40px; font-size: 17px; }
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .feature { padding: 26px; transition: transform .25s, border-color .25s; }
+  .feature:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.16); }
+  .icon {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 18px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--a1) 30%, transparent), color-mix(in srgb, var(--a2) 20%, transparent));
+    border: 1px solid color-mix(in srgb, var(--a1) 40%, transparent);
+  }
+  .feature h3 { font-size: 16.5px; margin-bottom: 6px; letter-spacing: -.01em; }
+  .feature p { color: var(--muted); font-size: 14.5px; }
+
+  /* API explorer */
+  .api { display: grid; grid-template-columns: 1fr 1.1fr; gap: 16px; }
+  .endpoints { padding: 8px; }
+  .ep { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 12px; transition: background .2s; }
+  .ep + .ep { border-top: 1px solid var(--border); }
+  .ep:hover { background: var(--panel); }
+  .method { font-family: var(--mono); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: rgba(52,211,153,.12); color: var(--ok); }
+  .ep .path { font-family: var(--mono); font-size: 14.5px; }
+  .ep .desc { color: var(--muted); font-size: 13.5px; }
+  .ep .grow { flex: 1; min-width: 0; }
+  .try { padding: 7px 14px; font-size: 13px; border-radius: 9px; }
+  .here { font-size: 12.5px; color: var(--dim); padding: 7px 4px; }
+  .console { overflow: hidden; display: flex; flex-direction: column; min-height: 300px; }
+  .console-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .console-bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3f4b; display: block; }
+  .console-bar i:nth-child(1) { background: #ff5f57; } .console-bar i:nth-child(2) { background: #febc2e; } .console-bar i:nth-child(3) { background: #28c840; }
+  .console-bar span { margin-left: 8px; font-family: var(--mono); }
+  .console pre { flex: 1; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: #c9cfdb; }
+  .console .k { color: var(--a1); filter: brightness(1.5); } .console .s { color: #a5e3b6; } .console .n { color: #f9c97c; } .console .c { color: var(--dim); }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 44px; color: var(--dim); font-size: 13.5px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer code { font-family: var(--mono); color: var(--muted); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 120px); z-index: 100;
+    padding: 12px 20px; border-radius: 12px; background: #151821; border: 1px solid var(--border); font-size: 14px;
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,.7); transition: transform .35s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- Service-specific ---------- */
+  .demo:has(.pf-cover) { padding-top: 0; }
+  .pf-cover { height: 110px; margin: 0 -26px; border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; background: linear-gradient(120deg, var(--a1), var(--a2), #8b5cf6); background-size: 200% 200%; animation: pan 8s ease infinite alternate; }
+  @keyframes pan { to { background-position: 100% 50%; } }
+  .pf-head { display: flex; justify-content: space-between; align-items: flex-end; margin-top: -42px; }
+  .pf-avatar {
+    width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 800;
+    background: linear-gradient(135deg, #1e293b, #0f172a); border: 4px solid #12141c; color: #93c5fd;
+  }
+  .pf-follow { padding: 8px 18px; font-size: 14px; }
+  .pf-follow.on { background: linear-gradient(135deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
+  .pf-name { font-size: 22px; letter-spacing: -.02em; margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+  .pf-verified { font-size: 12px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--a1); color: #fff; }
+  .pf-role { color: var(--muted); font-size: 14px; }
+  .pf-bio { font-size: 14.5px; margin: 12px 0 18px; color: #c5cad6; }
+  .pf-stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; padding: 14px 0; border-block: 1px solid var(--border); }
+  .pf-stats b { display: block; font-size: 18px; }
+  .pf-stats span { font-size: 12.5px; color: var(--muted); }
+  .pf-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+  .pf-tags span { font-size: 12.5px; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--a1) 15%, transparent); border: 1px solid color-mix(in srgb, var(--a1) 35%, transparent); color: #bfdbfe; }
+  .pf-progress-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .pf-progress-label b { color: var(--text); }
+  .pf-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .pf-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--a1), var(--a2)); animation: grow 1.4s cubic-bezier(.2,.8,.2,1); }
+  @keyframes grow { from { width: 0 !important; } }
+
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; padding-top: 56px; gap: 48px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .features { grid-template-columns: repeat(2, 1fr); }
+    .api { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .brand small { display: none; }
+    .stats, .features { grid-template-columns: 1fr; }
+    .ep { flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="/"><span class="brand-mark">👤</span> ZongDev <small>/ Profile</small></a>
+    <nav class="svc-nav" id="svc-nav" aria-label="Services"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <span class="pill"><span class="dot" id="hero-dot"></span><span id="hero-status">Checking status…</span></span>
+      <h1>Every user,<br><span class="grad">one profile.</span></h1>
+      <p class="lead">The Profile service stores who each user is: name, avatar, bio, skills and preferences. Other services read it whenever they need to show a person.</p>
+      <div class="cta">
+        <a class="btn primary" href="#api">Explore the API →</a>
+        <a class="btn" href="#features">Features</a>
+      </div>
+      <div class="tech"><span>Runtime <b>Python 3.10</b></span><span>Framework <b>Flask</b></span><span>Port <b>3001</b></span></div>
+    </div>
+    <div class="card demo">
+      <span class="demo-tag">Live demo</span>
+      <div class="pf-cover"></div>
+      <div class="pf-head">
+        <div class="pf-avatar">SC</div>
+        <button class="btn pf-follow" id="follow" type="button">+ Follow</button>
+      </div>
+      <h3 class="pf-name">Sokha Chan <span class="pf-verified" title="Verified">✓</span></h3>
+      <p class="pf-role">DevOps Engineer · Phnom Penh, Cambodia</p>
+      <p class="pf-bio">Building reliable pipelines and containerized services. Coffee, Kubernetes and clean YAML.</p>
+      <div class="pf-stats">
+        <div><b>128</b><span>Posts</span></div>
+        <div><b id="followers">2,431</b><span>Followers</span></div>
+        <div><b>312</b><span>Following</span></div>
+      </div>
+      <div class="pf-tags"><span>Docker</span><span>AWS</span><span>Go</span><span>Python</span><span>CI/CD</span></div>
+      <div class="pf-progress">
+        <div class="pf-progress-label"><span>Profile completeness</span><b>82%</b></div>
+        <div class="pf-bar"><i style="width:82%"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card stat"><div class="label">Status</div><div class="value" id="st-status"><span class="dot"></span>—</div></div>
+    <div class="card stat"><div class="label">Uptime</div><div class="value" id="st-uptime">—</div></div>
+    <div class="card stat"><div class="label">Runtime</div><div class="value" id="st-runtime">—</div></div>
+    <div class="card stat"><div class="label">Container</div><div class="value mono" id="st-host">—</div></div>
+    <div class="card stat"><div class="label">Latency</div><div class="value" id="st-latency">—</div></div>
+  </div>
+
+  <section id="features">
+    <div class="reveal">
+      <div class="eyebrow">What it does</div>
+      <h2>The single source of truth for user data</h2>
+      <p class="sub">Profile data lives in one place, so a change shows up the same way everywhere.</p>
+    </div>
+    <div class="features">
+      <div class="card feature reveal"><div class="icon">🪪</div><h3>Rich profiles</h3><p>Name, avatar, bio, location, links and skills, all in one record.</p></div>
+      <div class="card feature reveal"><div class="icon">⚙️</div><h3>Preferences</h3><p>Language, theme and notification settings that follow the user across apps.</p></div>
+      <div class="card feature reveal"><div class="icon">🔒</div><h3>Privacy controls</h3><p>Users choose which fields are public, visible to friends, or private.</p></div>
+      <div class="card feature reveal"><div class="icon">📈</div><h3>Completeness score</h3><p>Suggests what to fill in next to complete the profile.</p></div>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="reveal">
+      <div class="eyebrow">API explorer</div>
+      <h2>Call the endpoints from here</h2>
+      <p class="sub">These are the routes this container serves. Click <b>Try it</b> to send a real request and see the response.</p>
+    </div>
+    <div class="api reveal">
+      <div class="card endpoints">
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/</div><div class="desc">This home page</div></div>
+          <span class="here">You're here</span>
+        </div>
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/health</div><div class="desc">Status, uptime and runtime info as JSON</div></div>
+          <button class="btn try" data-try="/health">Try it</button>
+        </div>
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/api/hello</div><div class="desc">The service's plain-text greeting</div></div>
+          <button class="btn try" data-try="/api/hello">Try it</button>
+        </div>
+      </div>
+      <div class="card console">
+        <div class="console-bar"><i></i><i></i><i></i><span id="console-title">response</span></div>
+        <pre id="console"><span class="c">// Click "Try it" on an endpoint to see its response here.</span></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Profile Service · Python · Flask · container port <code>3001</code> → host <code>8002</code></span>
+    <span>Part of the ZongDev microservices platform</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SERVICE = "profile";
+  const SERVICES = [
+    { id: "auth", name: "Auth", port: 8001 },
+    { id: "profile", name: "Profile", port: 8002 },
+    { id: "messenger", name: "Messenger", port: 8003 },
+    { id: "finance", name: "Finance", port: 8004 },
+    { id: "share", name: "Share", port: 8005 },
+  ];
+
+  // Service switcher (host ports from docker-compose.yml)
+  const nav = document.getElementById("svc-nav");
+  SERVICES.forEach(s => {
+    const a = document.createElement("a");
+    a.textContent = s.name;
+    a.href = s.id === SERVICE ? "/" : `${location.protocol}//${location.hostname}:${s.port}/`;
+    if (s.id === SERVICE) a.className = "active";
+    nav.appendChild(a);
+  });
+
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function fmtUptime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    if (d) return `${d}d ${h}h ${m}m`;
+    if (h) return `${h}h ${m}m ${s}s`;
+    if (m) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
+  // Live health
+  let uptimeBase = null, fetchedAt = 0;
+  async function loadHealth() {
+    const t0 = performance.now();
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      const data = await res.json();
+      const ms = Math.round(performance.now() - t0);
+      const up = data.status === "UP";
+      document.getElementById("hero-dot").className = "dot " + (up ? "up" : "down");
+      document.getElementById("hero-status").textContent = up ? `Operational · ${data.runtime}` : "Degraded";
+      document.getElementById("st-status").innerHTML = `<span class="dot ${up ? "up" : "down"}"></span>${up ? "Online" : "Down"}`;
+      document.getElementById("st-runtime").textContent = data.runtime;
+      document.getElementById("st-host").textContent = data.hostname;
+      document.getElementById("st-host").title = data.hostname;
+      document.getElementById("st-latency").textContent = ms + " ms";
+      uptimeBase = typeof data.uptimeSeconds === "number" ? data.uptimeSeconds : null;
+      fetchedAt = Date.now();
+      if (uptimeBase === null) document.getElementById("st-uptime").textContent = "n/a";
+    } catch (e) {
+      document.getElementById("hero-dot").className = "dot down";
+      document.getElementById("hero-status").textContent = "Health check unavailable";
+      document.getElementById("st-status").innerHTML = `<span class="dot down"></span>Offline`;
+    }
+  }
+  setInterval(() => {
+    if (uptimeBase !== null) document.getElementById("st-uptime").textContent = fmtUptime(uptimeBase + (Date.now() - fetchedAt) / 1000);
+  }, 1000);
+  loadHealth();
+  setInterval(loadHealth, 15000);
+
+  // API explorer
+  function highlightJson(json) {
+    return escapeHtml(json)
+      .replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="k">$1</span>$2')
+      .replace(/(:\s*)(&quot;.*?&quot;)/g, '$1<span class="s">$2</span>')
+      .replace(/(:\s*)(-?\d+\.?\d*|true|false|null)/g, '$1<span class="n">$2</span>');
+  }
+  const out = document.getElementById("console");
+  document.querySelectorAll("[data-try]").forEach(btn => btn.addEventListener("click", async () => {
+    const ep = btn.dataset.try;
+    document.getElementById("console-title").textContent = "GET " + ep;
+    out.innerHTML = `<span class="c">// Sending GET ${ep} …</span>`;
+    const t0 = performance.now();
+    try {
+      const res = await fetch(ep, { cache: "no-store" });
+      const ms = Math.round(performance.now() - t0);
+      const type = res.headers.get("content-type") || "";
+      let body = await res.text();
+      let html;
+      if (type.includes("json")) {
+        try { html = highlightJson(JSON.stringify(JSON.parse(body), null, 2)); } catch { html = escapeHtml(body); }
+      } else {
+        html = `<span class="s">${escapeHtml(body)}</span>`;
+      }
+      out.innerHTML = `<span class="c">HTTP ${res.status} ${escapeHtml(res.statusText)} · ${ms} ms · ${escapeHtml(type || "unknown type")}</span>\n\n${html}`;
+    } catch (e) {
+      out.innerHTML = `<span class="c">// Request failed: ${escapeHtml(e.message)}</span>`;
+    }
+  }));
+
+  // Scroll reveal
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: .15 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+  /* ---------- Service-specific ---------- */
+  let followers = 2431, following = false;
+  document.getElementById("follow").addEventListener("click", e => {
+    following = !following;
+    followers += following ? 1 : -1;
+    e.currentTarget.classList.toggle("on", following);
+    e.currentTarget.textContent = following ? "✓ Following" : "+ Follow";
+    document.getElementById("followers").textContent = followers.toLocaleString();
+    toast(following ? "You're now following Sokha" : "Unfollowed Sokha");
+  });
+</script>
+</body>
+</html>

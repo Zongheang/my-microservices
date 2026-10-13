@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messenger Service · ZongDev</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080d;
+    --panel: rgba(255, 255, 255, 0.035);
+    --panel-2: rgba(255, 255, 255, 0.06);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #eceef3;
+    --muted: #8e95a5;
+    --dim: #5d6474;
+    --a1: #14b8a6;
+    --a2: #22c55e;
+    --ok: #34d399;
+    --bad: #f87171;
+    --radius: 18px;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; color: inherit; }
+
+  /* Background glow */
+  .glow { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .glow::before, .glow::after {
+    content: ""; position: absolute; width: 640px; height: 640px; border-radius: 50%;
+    filter: blur(120px); opacity: .28;
+  }
+  .glow::before { background: var(--a1); top: -220px; left: -160px; animation: drift 18s ease-in-out infinite alternate; }
+  .glow::after { background: var(--a2); bottom: -260px; right: -200px; animation: drift 22s ease-in-out infinite alternate-reverse; }
+  .grid-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
+    opacity: .5;
+  }
+  @keyframes drift { to { transform: translate(120px, 80px) scale(1.15); } }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: rgba(7, 8, 13, .65);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--a1), var(--a2)); font-size: 15px;
+    box-shadow: 0 6px 20px -6px var(--a1);
+  }
+  .brand small { color: var(--muted); font-weight: 500; }
+  .svc-nav { min-width: 0; display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 999px; overflow-x: auto; scrollbar-width: none; }
+  .svc-nav::-webkit-scrollbar { display: none; }
+  .svc-nav a { padding: 6px 14px; border-radius: 999px; font-size: 13.5px; color: var(--muted); font-weight: 500; transition: .2s; white-space: nowrap; }
+  .svc-nav a:hover { color: var(--text); background: var(--panel-2); }
+  .svc-nav a.active { color: #fff; background: linear-gradient(135deg, var(--a1), var(--a2)); }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 80px 0 64px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--border); font-size: 13px; color: var(--muted);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); position: relative; }
+  .dot.up { background: var(--ok); }
+  .dot.up::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--ok); opacity: .4; animation: ping 1.8s ease-out infinite; }
+  .dot.down { background: var(--bad); }
+  @keyframes ping { from { transform: scale(.6); opacity: .6; } to { transform: scale(1.8); opacity: 0; } }
+  h1 { font-size: clamp(38px, 5.4vw, 62px); line-height: 1.05; letter-spacing: -.035em; font-weight: 800; margin: 22px 0 20px; }
+  .grad { background: linear-gradient(120deg, var(--a1), var(--a2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 18px; color: var(--muted); max-width: 540px; }
+  .cta { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px;
+    font-weight: 600; font-size: 15px; cursor: pointer; border: 1px solid var(--border); background: var(--panel-2);
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.09); }
+  .btn.primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--a1), var(--a2)); box-shadow: 0 10px 30px -10px var(--a1); }
+  .btn.primary:hover { box-shadow: 0 14px 36px -10px var(--a1); }
+  .tech { display: flex; gap: 22px; margin-top: 40px; color: var(--dim); font-size: 13px; flex-wrap: wrap; }
+  .tech b { color: var(--muted); font-weight: 600; }
+
+  /* Cards */
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .demo { padding: 26px; position: relative; }
+  .demo-tag {
+    position: absolute; top: -12px; right: 20px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  }
+
+  /* Status */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 96px; }
+  .stat { padding: 20px 22px; }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .stat .value { font-size: 20px; font-weight: 700; margin-top: 6px; letter-spacing: -.01em; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .stat .value.mono { display: block; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 16px; font-weight: 500; }
+
+  /* Sections */
+  section { margin-bottom: 110px; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--a1); filter: brightness(1.3); }
+  h2 { font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -.03em; line-height: 1.15; margin: 10px 0 14px; }
+  .sub { color: var(--muted); max-width: 620px; margin-bottom: 40px; font-size: 17px; }
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .feature { padding: 26px; transition: transform .25s, border-color .25s; }
+  .feature:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.16); }
+  .icon {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 18px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--a1) 30%, transparent), color-mix(in srgb, var(--a2) 20%, transparent));
+    border: 1px solid color-mix(in srgb, var(--a1) 40%, transparent);
+  }
+  .feature h3 { font-size: 16.5px; margin-bottom: 6px; letter-spacing: -.01em; }
+  .feature p { color: var(--muted); font-size: 14.5px; }
+
+  /* API explorer */
+  .api { display: grid; grid-template-columns: 1fr 1.1fr; gap: 16px; }
+  .endpoints { padding: 8px; }
+  .ep { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 12px; transition: background .2s; }
+  .ep + .ep { border-top: 1px solid var(--border); }
+  .ep:hover { background: var(--panel); }
+  .method { font-family: var(--mono); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: rgba(52,211,153,.12); color: var(--ok); }
+  .ep .path { font-family: var(--mono); font-size: 14.5px; }
+  .ep .desc { color: var(--muted); font-size: 13.5px; }
+  .ep .grow { flex: 1; min-width: 0; }
+  .try { padding: 7px 14px; font-size: 13px; border-radius: 9px; }
+  .here { font-size: 12.5px; color: var(--dim); padding: 7px 4px; }
+  .console { overflow: hidden; display: flex; flex-direction: column; min-height: 300px; }
+  .console-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .console-bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3f4b; display: block; }
+  .console-bar i:nth-child(1) { background: #ff5f57; } .console-bar i:nth-child(2) { background: #febc2e; } .console-bar i:nth-child(3) { background: #28c840; }
+  .console-bar span { margin-left: 8px; font-family: var(--mono); }
+  .console pre { flex: 1; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: #c9cfdb; }
+  .console .k { color: var(--a1); filter: brightness(1.5); } .console .s { color: #a5e3b6; } .console .n { color: #f9c97c; } .console .c { color: var(--dim); }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 44px; color: var(--dim); font-size: 13.5px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer code { font-family: var(--mono); color: var(--muted); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 120px); z-index: 100;
+    padding: 12px 20px; border-radius: 12px; background: #151821; border: 1px solid var(--border); font-size: 14px;
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,.7); transition: transform .35s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- Service-specific ---------- */
+  .chat-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .chat-room { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .hash { color: var(--a1); font-size: 20px; }
+  .chat-members { display: flex; align-items: center; }
+  .chat-members i { width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-size: 10px; font-weight: 700; display: grid; place-items: center; background: #1f2430; border: 2px solid #12141c; margin-left: -8px; }
+  .chat-members span { font-size: 12.5px; color: var(--muted); margin-left: 10px; }
+  .chat-body { height: 300px; overflow-y: auto; padding: 16px 2px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; }
+  .msg { display: flex; gap: 10px; animation: fadeUp .35s ease; }
+  .msg .av { flex: none; width: 34px; height: 34px; border-radius: 10px; font-style: normal; font-size: 12px; font-weight: 700; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 25%, transparent); color: var(--c); }
+  .msg b { font-size: 14px; } .msg time { font-size: 11.5px; color: var(--dim); margin-left: 4px; }
+  .msg p { font-size: 14.5px; color: #cfd4de; }
+  .msg.me { justify-content: flex-end; }
+  .msg.me p { background: linear-gradient(135deg, var(--a1), var(--a2)); color: #04130f; font-weight: 500; padding: 9px 14px; border-radius: 14px 14px 4px 14px; max-width: 260px; }
+  .typing { display: inline-flex; gap: 4px; padding: 10px 12px; background: var(--panel-2); border-radius: 12px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bounce 1s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 50% { transform: translateY(-4px); opacity: .5; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+  .chat-input { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .chat-input input { flex: 1; padding: 11px 14px; border-radius: 11px; border: 1px solid var(--border); background: rgba(0,0,0,.3); outline: none; }
+  .chat-input input:focus { border-color: var(--a1); }
+  .chat-input .btn { padding: 0 16px; }
+
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; padding-top: 56px; gap: 48px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .features { grid-template-columns: repeat(2, 1fr); }
+    .api { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .brand small { display: none; }
+    .stats, .features { grid-template-columns: 1fr; }
+    .ep { flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="/"><span class="brand-mark">💬</span> ZongDev <small>/ Messenger</small></a>
+    <nav class="svc-nav" id="svc-nav" aria-label="Services"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <span class="pill"><span class="dot" id="hero-dot"></span><span id="hero-status">Checking status…</span></span>
+      <h1>Conversations that<br><span class="grad">move fast.</span></h1>
+      <p class="lead">The Messenger service delivers direct messages and team channels. It's written in Go to handle many connections at once with low latency.</p>
+      <div class="cta">
+        <a class="btn primary" href="#api">Explore the API →</a>
+        <a class="btn" href="#features">Features</a>
+      </div>
+      <div class="tech"><span>Language <b>Go 1.20</b></span><span>Server <b>net/http</b></span><span>Port <b>3002</b></span></div>
+    </div>
+    <div class="card demo">
+      <span class="demo-tag">Live demo</span>
+      <div class="chat-head">
+        <div class="chat-room"><span class="hash">#</span> team-devops</div>
+        <div class="chat-members"><i>SC</i><i>VR</i><i>DK</i><span>12 online</span></div>
+      </div>
+      <div class="chat-body" id="chat">
+        <div class="msg"><i class="av" style="--c:#f59e0b">VR</i><div><b>Vanna</b> <time>09:12</time><p>Finance service is deployed to staging 🚀</p></div></div>
+        <div class="msg"><i class="av" style="--c:#8b5cf6">DK</i><div><b>Dara</b> <time>09:14</time><p>Nice! Health check is green on my side.</p></div></div>
+        <div class="msg me"><div><p>Great, I'll push the new images to ECR.</p></div></div>
+      </div>
+      <form class="chat-input" id="chat-form">
+        <input id="chat-text" placeholder="Message #team-devops" autocomplete="off">
+        <button class="btn primary" type="submit" aria-label="Send">➤</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card stat"><div class="label">Status</div><div class="value" id="st-status"><span class="dot"></span>—</div></div>
+    <div class="card stat"><div class="label">Uptime</div><div class="value" id="st-uptime">—</div></div>
+    <div class="card stat"><div class="label">Runtime</div><div class="value" id="st-runtime">—</div></div>
+    <div class="card stat"><div class="label">Container</div><div class="value mono" id="st-host">—</div></div>
+    <div class="card stat"><div class="label">Latency</div><div class="value" id="st-latency">—</div></div>
+  </div>
+
+  <section id="features">
+    <div class="reveal">
+      <div class="eyebrow">What it does</div>
+      <h2>Real-time messaging</h2>
+      <p class="sub">Fast message delivery between users and teams, with small containers that are quick to start.</p>
+    </div>
+    <div class="features">
+      <div class="card feature reveal"><div class="icon">⚡</div><h3>Real-time delivery</h3><p>Messages go out right away, with typing and read indicators.</p></div>
+      <div class="card feature reveal"><div class="icon">👥</div><h3>Channels &amp; DMs</h3><p>Team channels for group work and private one-to-one chats.</p></div>
+      <div class="card feature reveal"><div class="icon">🔔</div><h3>Notifications</h3><p>Mentions and replies reach users even when they're offline.</p></div>
+      <div class="card feature reveal"><div class="icon">🪶</div><h3>Lightweight</h3><p>One compiled Go binary: low memory use and fast cold starts.</p></div>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="reveal">
+      <div class="eyebrow">API explorer</div>
+      <h2>Call the endpoints from here</h2>
+      <p class="sub">These are the routes this container serves. Click <b>Try it</b> to send a real request and see the response.</p>
+    </div>
+    <div class="api reveal">
+      <div class="card endpoints">
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/</div><div class="desc">This home page</div></div>
+          <span class="here">You're here</span>
+        </div>
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/health</div><div class="desc">Status, uptime and runtime info as JSON</div></div>
+          <button class="btn try" data-try="/health">Try it</button>
+        </div>
+        <div class="ep">
+          <span class="method">GET</span>
+          <div class="grow"><div class="path">/api/hello</div><div class="desc">The service's plain-text greeting</div></div>
+          <button class="btn try" data-try="/api/hello">Try it</button>
+        </div>
+      </div>
+      <div class="card console">
+        <div class="console-bar"><i></i><i></i><i></i><span id="console-title">response</span></div>
+        <pre id="console"><span class="c">// Click "Try it" on an endpoint to see its response here.</span></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Messenger Service · Go · container port <code>3002</code> → host <code>8003</code></span>
+    <span>Part of the ZongDev microservices platform</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SERVICE = "messenger";
+  const SERVICES = [
+    { id: "auth", name: "Auth", port: 8001 },
+    { id: "profile", name: "Profile", port: 8002 },
+    { id: "messenger", name: "Messenger", port: 8003 },
+    { id: "finance", name: "Finance", port: 8004 },
+    { id: "share", name: "Share", port: 8005 },
+  ];
+
+  // Service switcher (host ports from docker-compose.yml)
+  const nav = document.getElementById("svc-nav");
+  SERVICES.forEach(s => {
+    const a = document.createElement("a");
+    a.textContent = s.name;
+    a.href = s.id === SERVICE ? "/" : `${location.protocol}//${location.hostname}:${s.port}/`;
+    if (s.id === SERVICE) a.className = "active";
+    nav.appendChild(a);
+  });
+
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function fmtUptime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    if (d) return `${d}d ${h}h ${m}m`;
+    if (h) return `${h}h ${m}m ${s}s`;
+    if (m) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
+  // Live health
+  let uptimeBase = null, fetchedAt = 0;
+  async function loadHealth() {
+    const t0 = performance.now();
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      const data = await res.json();
+      const ms = Math.round(performance.now() - t0);
+      const up = data.status === "UP";
+      document.getElementById("hero-dot").className = "dot " + (up ? "up" : "down");
+      document.getElementById("hero-status").textContent = up ? `Operational · ${data.runtime}` : "Degraded";
+      document.getElementById("st-status").innerHTML = `<span class="dot ${up ? "up" : "down"}"></span>${up ? "Online" : "Down"}`;
+      document.getElementById("st-runtime").textContent = data.runtime;
+      document.getElementById("st-host").textContent = data.hostname;
+      document.getElementById("st-host").title = data.hostname;
+      document.getElementById("st-latency").textContent = ms + " ms";
+      uptimeBase = typeof data.uptimeSeconds === "number" ? data.uptimeSeconds : null;
+      fetchedAt = Date.now();
+      if (uptimeBase === null) document.getElementById("st-uptime").textContent = "n/a";
+    } catch (e) {
+      document.getElementById("hero-dot").className = "dot down";
+      document.getElementById("hero-status").textContent = "Health check unavailable";
+      document.getElementById("st-status").innerHTML = `<span class="dot down"></span>Offline`;
+    }
+  }
+  setInterval(() => {
+    if (uptimeBase !== null) document.getElementById("st-uptime").textContent = fmtUptime(uptimeBase + (Date.now() - fetchedAt) / 1000);
+  }, 1000);
+  loadHealth();
+  setInterval(loadHealth, 15000);
+
+  // API explorer
+  function highlightJson(json) {
+    return escapeHtml(json)
+      .replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="k">$1</span>$2')
+      .replace(/(:\s*)(&quot;.*?&quot;)/g, '$1<span class="s">$2</span>')
+      .replace(/(:\s*)(-?\d+\.?\d*|true|false|null)/g, '$1<span class="n">$2</span>');
+  }
+  const out = document.getElementById("console");
+  document.querySelectorAll("[data-try]").forEach(btn => btn.addEventListener("click", async () => {
+    const ep = btn.dataset.try;
+    document.getElementById("console-title").textContent = "GET " + ep;
+    out.innerHTML = `<span class="c">// Sending GET ${ep} …</span>`;
+    const t0 = performance.now();
+    try {
+      const res = await fetch(ep, { cache: "no-store" });
+      const ms = Math.round(performance.now() - t0);
+      const type = res.headers.get("content-type") || "";
+      let body = await res.text();
+      let html;
+      if (type.includes("json")) {
+        try { html = highlightJson(JSON.stringify(JSON.parse(body), null, 2)); } catch { html = escapeHtml(body); }
+      } else {
+        html = `<span class="s">${escapeHtml(body)}</span>`;
+      }
+      out.innerHTML = `<span class="c">HTTP ${res.status} ${escapeHtml(res.statusText)} · ${ms} ms · ${escapeHtml(type || "unknown type")}</span>\n\n${html}`;
+    } catch (e) {
+      out.innerHTML = `<span class="c">// Request failed: ${escapeHtml(e.message)}</span>`;
+    }
+  }));
+
+  // Scroll reveal
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: .15 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+  /* ---------- Service-specific ---------- */
+  const chat = document.getElementById("chat");
+  const replies = [
+    ["Dara", "DK", "#8b5cf6", "👍 Got it, I'll keep an eye on the pipeline."],
+    ["Vanna", "VR", "#f59e0b", "Ping me when the images are in ECR."],
+    ["Dara", "DK", "#8b5cf6", "All 5 services report UP on /health ✅"],
+    ["Vanna", "VR", "#f59e0b", "Nice work, team 🎉"],
+  ];
+  let ri = 0;
+  const time = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  function add(html) { chat.insertAdjacentHTML("beforeend", html); chat.scrollTop = chat.scrollHeight; }
+  document.getElementById("chat-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const input = document.getElementById("chat-text");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    add(`<div class="msg me"><div><p>${escapeHtml(text)}</p></div></div>`);
+    const [name, ini, color, reply] = replies[ri++ % replies.length];
+    setTimeout(() => {
+      add(`<div class="msg" id="typing"><i class="av" style="--c:${color}">${ini}</i><div class="typing"><span></span><span></span><span></span></div></div>`);
+      setTimeout(() => {
+        document.getElementById("typing")?.remove();
+        add(`<div class="msg"><i class="av" style="--c:${color}">${ini}</i><div><b>${name}</b> <time>${time()}</time><p>${reply}</p></div></div>`);
+      }, 1300);
+    }, 400);
+  });
+</script>
+</body>
+</html>
